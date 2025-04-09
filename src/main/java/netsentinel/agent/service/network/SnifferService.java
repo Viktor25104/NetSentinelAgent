@@ -1,7 +1,7 @@
 package netsentinel.agent.service.network;
 
 import lombok.extern.slf4j.Slf4j;
-import netsentinel.agent.dto.PacketDto;
+import netsentinel.agent.dto.network.PacketDto;
 import org.pcap4j.core.*;
 import org.pcap4j.packet.*;
 import org.springframework.messaging.simp.SimpMessagingTemplate;

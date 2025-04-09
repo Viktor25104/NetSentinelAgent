@@ -1,8 +1,8 @@
 package netsentinel.agent.controller.api;
 
 import lombok.RequiredArgsConstructor;
-import netsentinel.agent.model.CommandRequest;
-import netsentinel.agent.model.CommandResponse;
+import netsentinel.agent.dto.terminal.CommandRequest;
+import netsentinel.agent.dto.terminal.CommandResponse;
 import netsentinel.agent.service.terminal.CommandExecutorService;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,6 +15,6 @@ public class TerminalApiController {
 
     @PostMapping("/execute")
     public CommandResponse executeCommand(@RequestBody CommandRequest request) {
-        return commandExecutorService.executeCommand(request.getCommand());
+        return commandExecutorService.executeCommand(request.command());
     }
 }

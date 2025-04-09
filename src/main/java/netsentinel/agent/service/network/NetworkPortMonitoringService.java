@@ -1,6 +1,6 @@
 package netsentinel.agent.service.network;
 
-import netsentinel.agent.model.NetworkPort;
+import netsentinel.agent.dto.network.NetworkPortDto;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
@@ -10,13 +10,13 @@ import java.util.*;
 @Service
 public class NetworkPortMonitoringService {
 
-    public List<NetworkPort> getPorts() {
+    public List<NetworkPortDto> getPorts() {
         String os = System.getProperty("os.name").toLowerCase();
         return os.contains("win") ? getWindowsPorts() : getUnixPorts();
     }
 
-    private List<NetworkPort> getWindowsPorts() {
-        List<NetworkPort> ports = new ArrayList<>();
+    private List<NetworkPortDto> getWindowsPorts() {
+        List<NetworkPortDto> ports = new ArrayList<>();
         try {
             Process process = Runtime.getRuntime().exec("netstat -an");
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
@@ -31,7 +31,7 @@ public class NetworkPortMonitoringService {
                         String state = parts.length >= 4 ? parts[3] : "UNKNOWN";
 
                         String port = local.substring(local.lastIndexOf(':') + 1);
-                        ports.add(new NetworkPort(
+                        ports.add(new NetworkPortDto(
                                 tryParseInt(port),
                                 protocol,
                                 "-", // сервисов нет в netstat
@@ -46,8 +46,8 @@ public class NetworkPortMonitoringService {
         return ports;
     }
 
-    private List<NetworkPort> getUnixPorts() {
-        List<NetworkPort> ports = new ArrayList<>();
+    private List<NetworkPortDto> getUnixPorts() {
+        List<NetworkPortDto> ports = new ArrayList<>();
         try {
             String[] cmd = {"/bin/sh", "-c", "ss -tuln"};
             Process process = new ProcessBuilder(cmd).start();
@@ -61,7 +61,7 @@ public class NetworkPortMonitoringService {
                     String proto = parts[0];
                     String local = parts[4];
                     String port = local.substring(local.lastIndexOf(':') + 1);
-                    ports.add(new NetworkPort(tryParseInt(port), proto, "-", "LISTEN"));
+                    ports.add(new NetworkPortDto(tryParseInt(port), proto, "-", "LISTEN"));
                 }
             }
         } catch (Exception e) {

@@ -1,7 +1,7 @@
 package netsentinel.agent.controller.api;
 
 import lombok.RequiredArgsConstructor;
-import netsentinel.agent.dto.PacketDto;
+import netsentinel.agent.dto.network.PacketDto;
 import netsentinel.agent.service.network.SnifferService;
 import org.springframework.web.bind.annotation.*;
 

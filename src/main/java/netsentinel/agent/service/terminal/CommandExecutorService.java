@@ -1,6 +1,6 @@
 package netsentinel.agent.service.terminal;
 
-import netsentinel.agent.model.CommandResponse;
+import netsentinel.agent.dto.terminal.CommandResponse;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;

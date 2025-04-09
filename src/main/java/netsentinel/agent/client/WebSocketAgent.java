@@ -3,7 +3,7 @@ package netsentinel.agent.client;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
-import netsentinel.agent.model.ServerInfo;
+import netsentinel.agent.dto.agent.ServerInfoDto;
 import netsentinel.agent.service.network.NetworkPortMonitoringService;
 import netsentinel.agent.service.network.NetworkService;
 import netsentinel.agent.service.system.*;
@@ -55,7 +55,7 @@ public class WebSocketAgent {
         this.stompClient = stompClient;
     }
 
-//    @PostConstruct
+    @PostConstruct
     public void connect() {
         try {
             sessionId = loadSessionId();
@@ -143,7 +143,7 @@ public class WebSocketAgent {
                 int memoryUsage = extractInt(ramService.getRamInfo());
                 int diskUsage = extractInt(diskService.getDisksInfo());
 
-                ServerInfo serverInfo = new ServerInfo(
+                ServerInfoDto serverInfo = new ServerInfoDto(
                         sessionId, name, ip, type, "online", location, uptimeInSeconds,
                         cpuUsage, memoryUsage, diskUsage, companyId
                 );
@@ -175,7 +175,7 @@ public class WebSocketAgent {
         System.out.println("📡 Подписка на WebSocket-каналы для sessionId: " + sessionId);
 
         subscribe("/topic/server/" + sessionId + "/info", () -> {
-            ServerInfo serverInfo = new ServerInfo(
+            ServerInfoDto serverInfo = new ServerInfoDto(
                     sessionId, name, ip, type, "online", location, 0L,
                     (int) cpuService.getCpuLoad(),
                     (int) ramService.getRamLoad(),
@@ -262,7 +262,7 @@ public class WebSocketAgent {
     private void reconnectAsync() {
         try {
             Thread.sleep(5000);
-//            connect();
+            connect();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }

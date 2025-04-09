@@ -1,4 +1,4 @@
-package netsentinel.agent.dto;
+package netsentinel.agent.dto.network;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
