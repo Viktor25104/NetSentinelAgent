@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="layout/main :: layout">
+<body>
+<div th:fragment="content">
+    <h1>Конфигурация системы</h1>
+
+    <button id="refresh-btn">🔄 Обновить конфигурацию</button>
+
+    <h2>Текущие параметры</h2>
+    <pre id="config-output">Загрузка...</pre>
+
+    <script>
+        async function loadConfig() {
+            const response = await fetch('/api/config/current');
+            const data = await response.json();
+            document.getElementById('config-output').textContent = JSON.stringify(data, null, 2);
+        }
+
+        async function refreshConfig() {
+            const response = await fetch('/api/config/refresh', { method: 'POST' });
+            const text = await response.text();
+            alert(text);
+            loadConfig();
+        }
+
+        document.getElementById('refresh-btn').addEventListener('click', refreshConfig);
+
+        loadConfig();
+    </script>
+</div>
+</body>
+</html>

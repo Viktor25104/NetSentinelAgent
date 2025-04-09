@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="layout/main :: layout">
+<body>
+<div th:fragment="content">
+  <h1>Сниффер пакетов</h1>
+
+  <form method="post" th:action="@{/api/sniffer/capture/start}">
+    <label for="interface">Интерфейс:</label>
+    <select name="interface" id="interface">
+      <option th:each="intf : ${interfaces}" th:value="${intf}" th:text="${intf}"></option>
+    </select>
+    <button type="submit">Начать захват</button>
+  </form>
+
+  <form method="post" th:action="@{/api/sniffer/capture/stop}" style="margin-top: 1rem;">
+    <button type="submit">Остановить</button>
+  </form>
+
+  <form method="post" th:action="@{/api/sniffer/capture/clear}" style="margin-top: 1rem;">
+    <button type="submit">Очистить</button>
+  </form>
+
+  <h2>Захваченные пакеты</h2>
+  <pre id="packets">[JSON пакеты появятся здесь...]</pre>
+
+  <script>
+    async function loadPackets() {
+      const response = await fetch('/api/sniffer/packets');
+      const data = await response.json();
+      document.getElementById('packets').textContent = JSON.stringify(data, null, 2);
+    }
+    setInterval(loadPackets, 2000);
+    loadPackets();
+  </script>
+</div>
+</body>
+</html>

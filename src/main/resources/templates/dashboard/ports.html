@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="layout/main :: layout">
+<body>
+<div th:fragment="content">
+  <h1>Мониторинг сетевых портов</h1>
+
+  <table>
+    <thead>
+    <tr>
+      <th>Порт</th>
+      <th>Протокол</th>
+      <th>Сервис</th>
+      <th>Состояние</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="port : ${ports}">
+      <td th:text="${port.port}"></td>
+      <td th:text="${port.protocol}"></td>
+      <td th:text="${port.service}"></td>
+      <td th:text="${port.state}"></td>
+    </tr>
+    </tbody>
+  </table>
+</div>
+</body>
+</html>

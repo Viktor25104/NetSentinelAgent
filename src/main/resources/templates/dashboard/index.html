@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="layout/main :: layout">
+<body>
+<div th:fragment="content">
+  <h1 style="margin-bottom: 1.5rem;">Мониторинг сервера</h1>
+
+  <!-- CPU -->
+  <div class="card">
+    <h2>Загрузка CPU</h2>
+    <ul>
+      <li><strong>Имя CPU:</strong> <span th:text="${cpuInfo.name}"></span></li>
+      <li><strong>Загрузка:</strong> <span th:text="${cpuInfo.load}">%</span></li>
+      <li><strong>Ядер (логических):</strong> <span th:text="${cpuInfo.logicalCores}"></span></li>
+      <li><strong>Ядер (физических):</strong> <span th:text="${cpuInfo.physicalCores}"></span></li>
+    </ul>
+  </div>
+
+  <!-- RAM -->
+  <div class="card">
+    <h2>Использование RAM</h2>
+    <ul>
+      <li><strong>Общий объём:</strong> <span th:text="${ramInfo.totalBytes}"></span> байт</li>
+      <li><strong>Свободно:</strong> <span th:text="${ramInfo.freeBytes}"></span> байт</li>
+      <li><strong>Занято:</strong> <span th:text="${ramInfo.usedBytes}"></span> байт</li>
+      <li><strong>Загрузка:</strong> <span th:text="${ramInfo.usedPercent}"></span>%</li>
+    </ul>
+  </div>
+
+  <!-- Диски -->
+  <div class="card">
+    <h2>Диски</h2>
+    <table>
+      <thead>
+      <tr>
+        <th>Диск</th>
+        <th>Тип</th>
+        <th>Монтирование</th>
+        <th>Объём</th>
+        <th>Занято</th>
+        <th>Свободно</th>
+        <th>Использовано</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr th:each="disk : ${disksInfo}">
+        <td th:text="${disk.name}">C:</td>
+        <td th:text="${disk.type}">NTFS</td>
+        <td th:text="${disk.mount}">/mnt</td>
+        <td th:text="${disk.totalBytes}"></td>
+        <td th:text="${disk.usedBytes}"></td>
+        <td th:text="${disk.freeBytes}"></td>
+        <td th:text="${disk.usedPercent}">%</td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Сеть -->
+  <div class="card">
+    <h2>Сеть</h2>
+    <table>
+      <thead>
+      <tr>
+        <th>Интерфейс</th>
+        <th>MAC</th>
+        <th>IP</th>
+        <th>Загружено (байт)</th>
+        <th>Отправлено (байт)</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr th:each="iface : ${networkInfo}">
+        <td th:text="${iface.displayName}"></td>
+        <td th:text="${iface.mac}"></td>
+        <td th:text="${iface.ipv4}"></td>
+        <td th:text="${iface.bytesRecv}"></td>
+        <td th:text="${iface.bytesSent}"></td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Процессы -->
+  <div class="card">
+    <h2>Процессы</h2>
+    <table>
+      <thead>
+      <tr>
+        <th>Имя</th>
+        <th>PID</th>
+        <th>Сессия</th>
+        <th>Память</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr th:each="p : ${processList}">
+        <td th:text="${p.name}">Имя</td>
+        <td th:text="${p.pid}">PID</td>
+        <td th:text="${p.sessionName}">Сессия</td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+
+
+  <!-- Автозапуск -->
+  <div class="card">
+    <h2>Автозапуск</h2>
+    <table>
+      <thead>
+      <tr>
+        <th>Название</th>
+        <th>Расположение</th>
+        <th>Включено</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr th:each="entry : ${startupList}">
+        <td th:text="${entry['name']}">example.bat</td>
+        <td th:text="${entry['location']}">Startup Folder</td>
+        <td th:text="${entry['enabled']}">true</td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="layout/main :: layout">
+<body>
+<div th:fragment="content">
+    <h1>Удалённый терминал</h1>
+
+    <form id="terminal-form">
+        <label for="command">Введите команду:</label>
+        <input type="text" id="command" name="command" placeholder="Например: ls -la" required />
+        <button type="submit">Выполнить</button>
+    </form>
+
+    <h2>Результат выполнения</h2>
+    <pre id="terminal-output">Ожидание ввода команды...</pre>
+
+    <script>
+        const form = document.getElementById('terminal-form');
+        const output = document.getElementById('terminal-output');
+
+        form.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const command = document.getElementById('command').value;
+
+            const response = await fetch('/api/terminal/execute', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ command })
+            });
+
+            const result = await response.json();
+            output.textContent =
+                (result.success ? '✅ Успешно\n\n' : '❌ Ошибка\n\n') +
+                (result.output || '') +
+                (result.error ? '\n\n[stderr]:\n' + result.error : '');
+        });
+    </script>
+</div>
+</body>
+</html>

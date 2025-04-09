@@ -1,0 +1,38 @@
+server:
+  port: 8081
+  address: 0.0.0.0
+
+spring:
+  main:
+    allow-bean-definition-overriding: true
+  application:
+    name: agent
+  cloud:
+    compatibility-verifier:
+      enabled: false
+
+sysmonitor:
+  polling:
+    cpu: 1000
+    ram: 1000
+    disk: 5000
+    network: 1000
+    processes: 3000
+    startup: 5000
+    ports: 5000
+
+  network:
+    max-packets-capture: 1000
+    packet-buffer-size: 2048
+    capture-payload: false
+
+  terminal:
+    history-size: 100
+    timeout: 300
+
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: refresh,health,info

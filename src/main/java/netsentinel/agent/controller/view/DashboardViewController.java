@@ -1,0 +1,32 @@
+package netsentinel.agent.controller.view;
+
+import lombok.RequiredArgsConstructor;
+import netsentinel.agent.service.network.NetworkService;
+import netsentinel.agent.service.system.*;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+
+@Controller
+@RequiredArgsConstructor
+public class DashboardViewController {
+
+    private final CpuService cpuService;
+    private final RamService ramService;
+    private final DiskService diskService;
+    private final NetworkService networkService;
+    private final ProcessService processService;
+    private final StartupService startupService;
+
+    @GetMapping("/dashboard")
+    public String getDashboard(Model model) {
+        model.addAttribute("cpuInfo", cpuService.getCpuInfo());
+        model.addAttribute("ramInfo", ramService.getRamInfo());
+        model.addAttribute("disksInfo", diskService.getDisksInfo());
+        model.addAttribute("networkInfo", networkService.getNetworkInfo());
+        model.addAttribute("processList", processService.getProcessList());
+        model.addAttribute("startupList", startupService.getStartupList());
+        return "dashboard/index";
+    }
+
+}
