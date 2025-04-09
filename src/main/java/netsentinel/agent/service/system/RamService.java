@@ -1,10 +1,9 @@
 package netsentinel.agent.service.system;
 
+import netsentinel.agent.dto.system.RamInfoDto;
 import oshi.SystemInfo;
 import oshi.hardware.GlobalMemory;
 import org.springframework.stereotype.Service;
-
-import java.util.Map;
 
 @Service
 public class RamService {
@@ -22,16 +21,11 @@ public class RamService {
         return Math.round(((double) used / total) * 1000.0) / 10.0;
     }
 
-    public Map<String, Object> getRamInfo() {
+    public RamInfoDto getRamInfo() {
         long total = memory.getTotal();
         long available = memory.getAvailable();
         long used = total - available;
 
-        return Map.of(
-                "totalBytes", total,
-                "usedBytes", used,
-                "freeBytes", available,
-                "usedPercent", getRamLoad()
-        );
+        return new RamInfoDto(total, used, available, getRamLoad());
     }
 }

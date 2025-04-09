@@ -1,10 +1,12 @@
 package netsentinel.agent.service.network;
 
+import netsentinel.agent.dto.network.NetworkInterfaceDto;
 import oshi.SystemInfo;
 import oshi.hardware.NetworkIF;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class NetworkService {
@@ -15,23 +17,21 @@ public class NetworkService {
         this.interfaces = new SystemInfo().getHardware().getNetworkIFs();
     }
 
-    public List<Map<String, Object>> getNetworkInfo() {
-        List<Map<String, Object>> result = new ArrayList<>();
+    public List<NetworkInterfaceDto> getNetworkInfo() {
+        List<NetworkInterfaceDto> result = new ArrayList<>();
 
         for (NetworkIF net : interfaces) {
             net.updateAttributes();
-
-            Map<String, Object> info = new LinkedHashMap<>();
-            info.put("name", net.getName());
-            info.put("displayName", net.getDisplayName());
-            info.put("mac", net.getMacaddr());
-            info.put("ipv4", Arrays.toString(net.getIPv4addr()));
-            info.put("ipv6", Arrays.toString(net.getIPv6addr()));
-            info.put("bytesSent", net.getBytesSent());
-            info.put("bytesRecv", net.getBytesRecv());
-            info.put("speed", net.getSpeed());
-
-            result.add(info);
+            result.add(new NetworkInterfaceDto(
+                    net.getName(),
+                    net.getDisplayName(),
+                    net.getMacaddr(),
+                    net.getIPv4addr(),
+                    net.getIPv6addr(),
+                    net.getBytesSent(),
+                    net.getBytesRecv(),
+                    net.getSpeed()
+            ));
         }
 
         return result;

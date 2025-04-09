@@ -1,4 +1,4 @@
-package netsentinel.agent.client;
+package netsentinel.agent.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

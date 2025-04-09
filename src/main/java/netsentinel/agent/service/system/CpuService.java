@@ -1,10 +1,9 @@
 package netsentinel.agent.service.system;
 
+import netsentinel.agent.dto.system.CpuInfoDto;
 import oshi.SystemInfo;
 import oshi.hardware.CentralProcessor;
 import org.springframework.stereotype.Service;
-
-import java.util.Map;
 
 @Service
 public class CpuService {
@@ -15,7 +14,7 @@ public class CpuService {
     public CpuService() {
         SystemInfo systemInfo = new SystemInfo();
         this.processor = systemInfo.getHardware().getProcessor();
-        this.prevTicks = processor.getSystemCpuLoadTicks(); // начальное состояние
+        this.prevTicks = processor.getSystemCpuLoadTicks();
     }
 
     public double getCpuLoad() {
@@ -25,12 +24,12 @@ public class CpuService {
         return Math.round(load * 10.0) / 10.0;
     }
 
-    public Map<String, Object> getCpuInfo() {
-        return Map.of(
-                "name", processor.getProcessorIdentifier().getName(),
-                "physicalCores", processor.getPhysicalProcessorCount(),
-                "logicalCores", processor.getLogicalProcessorCount(),
-                "load", getCpuLoad()
+    public CpuInfoDto getCpuInfo() {
+        return new CpuInfoDto(
+                processor.getProcessorIdentifier().getName(),
+                processor.getPhysicalProcessorCount(),
+                processor.getLogicalProcessorCount(),
+                getCpuLoad()
         );
     }
 }

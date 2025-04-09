@@ -1,5 +1,6 @@
 package netsentinel.agent.service.system;
 
+import netsentinel.agent.dto.system.DiskInfoDto;
 import oshi.SystemInfo;
 import oshi.software.os.FileSystem;
 import oshi.software.os.OSFileStore;
@@ -7,7 +8,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 @Service
 public class DiskService {
@@ -19,8 +19,8 @@ public class DiskService {
         this.fileSystem = systemInfo.getOperatingSystem().getFileSystem();
     }
 
-    public List<Map<String, Object>> getDisksInfo() {
-        List<Map<String, Object>> disks = new ArrayList<>();
+    public List<DiskInfoDto> getDisksInfo() {
+        List<DiskInfoDto> disks = new ArrayList<>();
 
         for (OSFileStore fs : fileSystem.getFileStores()) {
             long total = fs.getTotalSpace();
@@ -28,14 +28,14 @@ public class DiskService {
             long used = total - usable;
             double usage = total > 0 ? ((double) used / total) * 100.0 : 0;
 
-            disks.add(Map.of(
-                    "name", fs.getName(),
-                    "mount", fs.getMount(),
-                    "type", fs.getType(),
-                    "totalBytes", total,
-                    "usedBytes", used,
-                    "freeBytes", usable,
-                    "usedPercent", Math.round(usage * 10.0) / 10.0
+            disks.add(new DiskInfoDto(
+                    fs.getName(),
+                    fs.getMount(),
+                    fs.getType(),
+                    total,
+                    used,
+                    usable,
+                    Math.round(usage * 10.0) / 10.0
             ));
         }
 
@@ -43,14 +43,12 @@ public class DiskService {
     }
 
     public int getOverallDiskLoad() {
-        List<Map<String, Object>> disks = getDisksInfo();
-
+        List<DiskInfoDto> disks = getDisksInfo();
         if (disks.isEmpty()) return 0;
 
-        double sum = 0;
-        for (Map<String, Object> disk : disks) {
-            sum += ((Number) disk.get("usedPercent")).doubleValue();
-        }
+        double sum = disks.stream()
+                .mapToDouble(DiskInfoDto::usedPercent)
+                .sum();
 
         return (int) Math.round(sum / disks.size());
     }
