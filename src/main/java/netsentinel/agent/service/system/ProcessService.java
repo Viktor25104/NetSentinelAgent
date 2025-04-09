@@ -7,9 +7,22 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.*;
 
+/**
+ * Сервис управления и мониторинга запущенных процессов.
+ * Поддерживает Windows и Linux.
+ *
+ * @author Viktor Marymorych
+ * @since 1.0
+ */
 @Service
 public class ProcessService {
 
+    /**
+     * Возвращает список запущенных процессов.
+     * Формат зависит от ОС.
+     *
+     * @return список {@link ProcessInfoDto}
+     */
     public List<ProcessInfoDto> getProcessList() {
         return isWindows() ? getWindowsProcesses() : getLinuxProcesses();
     }
@@ -71,6 +84,12 @@ public class ProcessService {
         return processes;
     }
 
+    /**
+     * Убивает процесс по его PID.
+     *
+     * @param pid идентификатор процесса
+     * @return true, если успешно
+     */
     public boolean killProcess(int pid) {
         try {
             Process proc = isWindows()

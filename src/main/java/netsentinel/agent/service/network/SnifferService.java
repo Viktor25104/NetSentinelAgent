@@ -1,212 +1,203 @@
 package netsentinel.agent.service.network;
 
+import jakarta.annotation.PreDestroy;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import netsentinel.agent.dto.network.PacketDto;
 import org.pcap4j.core.*;
 import org.pcap4j.packet.*;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.net.InetAddress;
+import java.util.*;
 
-@Service
+/**
+ * Сервис захвата сетевых пакетов с использованием библиотеки Pcap4J.
+ * <p>
+ * Позволяет:
+ * <ul>
+ *     <li>Получить список интерфейсов</li>
+ *     <li>Запустить и остановить захват трафика</li>
+ *     <li>Обрабатывать пакеты и извлекать полезную нагрузку</li>
+ *     <li>Передавать их в WebSocket клиенту</li>
+ * </ul>
+ * Работает с TCP, UDP, ICMP, Ethernet.
+ *
+ * @author Viktor Marymorych
+ * @since 1.0
+ */
 @Slf4j
+@Service
 public class SnifferService {
 
+    /**
+     * -- GETTER --
+     *  Возвращает список всех захваченных пакетов.
+     *
+     * @return список {@link PacketDto}
+     */
+    @Getter
+    private final List<PacketDto> capturedPackets = Collections.synchronizedList(new ArrayList<>());
     private final SimpMessagingTemplate messagingTemplate;
+
+    @Value("${sysmonitor.network.maxPacketsCapture:100}")
+    private int maxPacketsCapture;
+
+    @Value("${sysmonitor.network.packetBufferSize:65536}")
+    private int bufferSize;
+
+    @Value("${sysmonitor.network.capturePayload:false}")
+    private boolean capturePayload;
+
     private PcapHandle handle;
-    private ExecutorService executor;
-    private final AtomicBoolean isRunning = new AtomicBoolean(false);
-    private final List<PacketDto> capturedPackets = new ArrayList<>();
-    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
 
     public SnifferService(SimpMessagingTemplate messagingTemplate) {
         this.messagingTemplate = messagingTemplate;
     }
 
-    public List<String> getNetworkInterfaces() {
-        List<String> interfaces = new ArrayList<>();
+    /**
+     * Получает список доступных сетевых интерфейсов.
+     *
+     * @return список {@link PcapNetworkInterface}
+     */
+    public List<PcapNetworkInterface> getNetworkInterfaces() {
         try {
-            for (PcapNetworkInterface nif : Pcaps.findAllDevs()) {
-                interfaces.add(nif.getName() + " - " + nif.getDescription());
-            }
-        } catch (PcapNativeException e) {
-            log.error("Error getting network interfaces", e);
-        }
-        return interfaces;
-    }
-
-    public List<PacketDto> getCapturedPackets() {
-        return new ArrayList<>(capturedPackets);
-    }
-
-    public void startCapture(String interfaceName) {
-        if (isRunning.get()) {
-            log.info("Capture is already running");
-            return;
-        }
-
-        try {
-            log.info("Starting capture with interface: {}", interfaceName);
-
-            List<PcapNetworkInterface> allDevs = Pcaps.findAllDevs();
-            log.info("Found {} network interfaces", allDevs.size());
-
-            // Логируем все доступные интерфейсы для отладки
-            for (PcapNetworkInterface dev : allDevs) {
-                log.info("Available interface: {} ({})", dev.getName(),
-                        dev.getDescription() != null ? dev.getDescription() : "No description");
-            }
-
-            PcapNetworkInterface nif = null;
-
-            // Если интерфейс указан явно, пытаемся его найти
-            if (interfaceName != null && !interfaceName.isEmpty()) {
-                // Обрабатываем возможные варианты имени интерфейса
-                String normalizedName = interfaceName.replace("/", "\\");
-
-                for (PcapNetworkInterface dev : allDevs) {
-                    // Проверяем точное соответствие
-                    if (dev.getName().equals(normalizedName) ||
-                            dev.getName().equals(interfaceName)) {
-                        nif = dev;
-                        log.info("Found exact matching interface: {}", dev.getName());
-                        break;
-                    }
-
-                    // Если не нашли точное соответствие, ищем частичное
-                    if (nif == null && dev.getName().contains(normalizedName) ||
-                            (normalizedName.contains("{") && dev.getName().contains(normalizedName.substring(normalizedName.indexOf("{"))))) {
-                        nif = dev;
-                        log.info("Found partial matching interface: {}", dev.getName());
-                        // Не прерываем цикл, возможно найдется точное соответствие
-                    }
-                }
-            }
-
-            // Если интерфейс не найден или не указан, используем первый доступный
-            if (nif == null) {
-                if (!allDevs.isEmpty()) {
-                    nif = allDevs.get(0);
-                    log.info("Using default interface: {}", nif.getName());
-                } else {
-                    log.error("No network interfaces available");
-                    return;
-                }
-            }
-
-            // Открываем интерфейс для захвата
-            log.info("Opening interface for capture: {}", nif.getName());
-            handle = nif.openLive(65536, PcapNetworkInterface.PromiscuousMode.PROMISCUOUS, 10);
-            isRunning.set(true);
-
-            // Создаем поток для захвата пакетов
-            executor = Executors.newSingleThreadExecutor();
-            executor.execute(() -> {
-                int packetCount = 0;
-                while (isRunning.get()) {
-                    try {
-                        Packet packet = handle.getNextPacket();
-                        if (packet != null) {
-                            processPacket(packet);
-                            packetCount++;
-
-                            // Периодически логируем статистику
-                            if (packetCount % 100 == 0) {
-                                log.info("Captured {} packets so far", packetCount);
-                            }
-                        }
-                    } catch (NotOpenException e) {
-                        if (isRunning.get()) {
-                            log.error("Error capturing packet", e);
-                        }
-                        break;
-                    }
-                }
-                log.info("Packet capture thread finished, total packets: {}", packetCount);
-            });
-
-            log.info("Packet capturing started on interface: {}", nif.getName());
-        } catch (PcapNativeException e) {
-            log.error("Pcap native error starting capture", e);
+            return Pcaps.findAllDevs();
         } catch (Exception e) {
-            log.error("Unexpected error starting packet capture", e);
+            log.error("Ошибка при получении интерфейсов", e);
+            return Collections.emptyList();
         }
     }
 
-    public void stopCapture() {
-        if (!isRunning.get()) {
-            return;
-        }
-
-        isRunning.set(false);
-        if (handle != null) {
-            handle.close();
-        }
-        if (executor != null) {
-            executor.shutdown();
-        }
-        log.info("Packet capturing stopped");
-    }
-
-    public void clearCapture() {
+    /**
+     * Очищает список сохранённых пакетов.
+     */
+    public void clearCapturedPackets() {
         capturedPackets.clear();
-        messagingTemplate.convertAndSend("/topic/packets", capturedPackets);
-        log.info("Packet capture cleared");
     }
 
+    /**
+     * Инициализирует и запускает сниффер на указанном интерфейсе.
+     *
+     * @param interfaceName имя интерфейса, если null — используется первый доступный
+     */
+    public void startCapture(String interfaceName) {
+        try {
+            PcapNetworkInterface nif = (interfaceName != null)
+                    ? getNetworkInterfaces().stream().filter(n -> n.getName().equals(interfaceName)).findFirst().orElse(null)
+                    : getNetworkInterfaces().stream().findFirst().orElse(null);
+
+            if (nif == null) {
+                log.warn("Интерфейс не найден или недоступен: {}", interfaceName);
+                return;
+            }
+
+            handle = nif.openLive(bufferSize, PcapNetworkInterface.PromiscuousMode.PROMISCUOUS, 10);
+
+            log.info("Старт сниффера на интерфейсе: {}", nif.getName());
+
+            new Thread(() -> {
+                try {
+                    handle.loop(-1, this::processPacket);
+                } catch (Exception e) {
+                    log.error("Ошибка захвата пакетов", e);
+                }
+            }).start();
+
+        } catch (Exception e) {
+            log.error("Ошибка запуска сниффера", e);
+        }
+    }
+
+    /**
+     * Прекращает захват трафика, если он активен.
+     */
+    public void stopCapture() {
+        try {
+            if (handle != null && handle.isOpen()) {
+                handle.breakLoop();
+                handle.close();
+            }
+        } catch (NotOpenException e) {
+            log.error("Ошибка остановки сниффера", e);
+        }
+
+    }
+
+    /**
+     * Обрабатывает захваченный пакет.
+     * Извлекает IP, порты, длину, протокол и при необходимости payload.
+     *
+     * @param packet {@link Packet} от Pcap4J
+     */
     private void processPacket(Packet packet) {
         try {
-            PacketDto packetDto = new PacketDto();
-            packetDto.setTimestamp(LocalDateTime.now().format(formatter));
-            packetDto.setLength(packet.length());
+            long timestamp = System.currentTimeMillis();
 
-            // Process Ethernet layer
-            if (packet.contains(EthernetPacket.class)) {
-                EthernetPacket ethernetPacket = packet.get(EthernetPacket.class);
-                packetDto.setInfo("Ethernet: " + ethernetPacket.getHeader().getSrcAddr() + " -> " +
-                        ethernetPacket.getHeader().getDstAddr());
-            }
+            IpPacket ipPacket = packet.get(IpPacket.class);
+            if (ipPacket == null) return;
 
-            // Process IP layer
-            if (packet.contains(IpPacket.class)) {
-                IpPacket ipPacket = packet.get(IpPacket.class);
-                packetDto.setSourceIP(ipPacket.getHeader().getSrcAddr().getHostAddress());
-                packetDto.setDestinationIP(ipPacket.getHeader().getDstAddr().getHostAddress());
-                packetDto.setProtocol(String.valueOf(ipPacket.getHeader().getProtocol()));
-            }
+            InetAddress srcAddr = ipPacket.getHeader().getSrcAddr();
+            InetAddress dstAddr = ipPacket.getHeader().getDstAddr();
+            int srcPort = -1;
+            int dstPort = -1;
+            String protocol = "UNKNOWN";
 
-            // Process TCP layer
             if (packet.contains(TcpPacket.class)) {
-                TcpPacket tcpPacket = packet.get(TcpPacket.class);
-                packetDto.setSourcePort(tcpPacket.getHeader().getSrcPort().valueAsInt());
-                packetDto.setDestinationPort(tcpPacket.getHeader().getDstPort().valueAsInt());
-                packetDto.setProtocol("TCP");
-                packetDto.setInfo("TCP: " + packetDto.getSourceIP() + ":" + packetDto.getSourcePort() +
-                        " -> " + packetDto.getDestinationIP() + ":" + packetDto.getDestinationPort());
+                TcpPacket tcp = packet.get(TcpPacket.class);
+                srcPort = tcp.getHeader().getSrcPort().valueAsInt();
+                dstPort = tcp.getHeader().getDstPort().valueAsInt();
+                protocol = "TCP";
+            } else if (packet.contains(UdpPacket.class)) {
+                UdpPacket udp = packet.get(UdpPacket.class);
+                srcPort = udp.getHeader().getSrcPort().valueAsInt();
+                dstPort = udp.getHeader().getDstPort().valueAsInt();
+                protocol = "UDP";
             }
 
-            // Process UDP layer
-            if (packet.contains(UdpPacket.class)) {
-                UdpPacket udpPacket = packet.get(UdpPacket.class);
-                packetDto.setSourcePort(udpPacket.getHeader().getSrcPort().valueAsInt());
-                packetDto.setDestinationPort(udpPacket.getHeader().getDstPort().valueAsInt());
-                packetDto.setProtocol("UDP");
-                packetDto.setInfo("UDP: " + packetDto.getSourceIP() + ":" + packetDto.getSourcePort() +
-                        " -> " + packetDto.getDestinationIP() + ":" + packetDto.getDestinationPort());
-            }
+            int length = packet.length();
+            String info = capturePayload ? packet.toString() : "";
+
+            PacketDto packetDto = new PacketDto(
+                    new Date(timestamp).toString(),
+                    srcAddr.getHostAddress(),
+                    dstAddr.getHostAddress(),
+                    srcPort,
+                    dstPort,
+                    protocol,
+                    length,
+                    info
+            );
 
             capturedPackets.add(packetDto);
-            messagingTemplate.convertAndSend("/topic/packets", capturedPackets);
+
+            if (capturedPackets.size() > maxPacketsCapture) {
+                capturedPackets.remove(0);
+            }
+
+            messagingTemplate.convertAndSend("/topic/packets", packetDto);
+
         } catch (Exception e) {
-            log.error("Error processing packet", e);
+            log.error("Ошибка обработки пакета", e);
         }
     }
 
+    /**
+     * Прекращает захват при завершении работы приложения.
+     */
+    @PreDestroy
+    public void onDestroy() {
+        stopCapture();
+    }
+
+    /**
+     * Удаляет текущий список пакетов и сбрасывает буфер.
+     */
+    public void clearCapture() {
+        clearCapturedPackets();
+        log.info("Буфер сниффера очищен");
+    }
 }

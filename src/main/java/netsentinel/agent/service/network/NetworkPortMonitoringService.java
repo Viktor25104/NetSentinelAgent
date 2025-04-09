@@ -7,13 +7,33 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.*;
 
+/**
+ * Сервис для мониторинга открытых портов и активных соединений.
+ * <p>
+ * Использует системные команды:
+ * <ul>
+ *     <li><b>Windows</b>: {@code netstat -an}</li>
+ *     <li><b>Linux/macOS</b>: {@code ss -tuln}</li>
+ * </ul>
+ * Возвращает список DTO {@link NetworkPortDto}.
+ *
+ * @author Viktor Marymorych
+ * @since 1.0
+ */
 @Service
 public class NetworkPortMonitoringService {
 
+    /**
+     * Возвращает список открытых портов в зависимости от ОС.
+     *
+     * @return список {@link NetworkPortDto}
+     */
     public List<NetworkPortDto> getPorts() {
         String os = System.getProperty("os.name").toLowerCase();
         return os.contains("win") ? getWindowsPorts() : getUnixPorts();
     }
+
+    // Методы ниже приватны, так как специфичны под платформу.
 
     private List<NetworkPortDto> getWindowsPorts() {
         List<NetworkPortDto> ports = new ArrayList<>();
@@ -34,7 +54,7 @@ public class NetworkPortMonitoringService {
                         ports.add(new NetworkPortDto(
                                 tryParseInt(port),
                                 protocol,
-                                "-", // сервисов нет в netstat
+                                "-",
                                 state
                         ));
                     }
@@ -52,8 +72,8 @@ public class NetworkPortMonitoringService {
             String[] cmd = {"/bin/sh", "-c", "ss -tuln"};
             Process process = new ProcessBuilder(cmd).start();
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            reader.readLine(); // пропускаем заголовок
 
-            reader.readLine(); // skip header
             String line;
             while ((line = reader.readLine()) != null) {
                 String[] parts = line.trim().split("\\s+");

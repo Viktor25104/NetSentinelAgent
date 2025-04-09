@@ -1,6 +1,5 @@
 package netsentinel.agent.client;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -21,10 +20,28 @@ import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.function.Supplier;
 
+/**
+ * WebSocketAgent — главный агент клиента Net Sentinel, отвечающий за:
+ * <ul>
+ *   <li>установку WebSocket STOMP соединения с сервером</li>
+ *   <li>автоматическую регистрацию сервера</li>
+ *   <li>подписку на серверные каналы метрик</li>
+ *   <li>ответ на запросы с актуальной информацией</li>
+ *   <li>переподключение при потере связи</li>
+ * </ul>
+ *
+ * @author Viktor Marymorych
+ * @since 1.0
+ */
 @Component
 @RequiredArgsConstructor
 public class WebSocketAgent {
 
+    // ============================ DEPENDENCIES ============================
+
+    /**
+     * Сервисы для сбора информации об ОС.
+     */
     private final CpuService cpuService;
     private final DiskService diskService;
     private final NetworkService networkService;
@@ -32,20 +49,39 @@ public class WebSocketAgent {
     private final ProcessService processService;
     private final NetworkPortMonitoringService networkPortMonitoringService;
     private final StartupService startupService;
+
+    /** STOMP WebSocket клиент */
     private final WebSocketStompClient stompClient;
+
+    /** Настройки агента из application.yml */
     private final AgentProperties props;
 
+    /** JSON-сериализатор */
     private final ObjectMapper mapper = new ObjectMapper();
 
+    /** STOMP сессия */
     private StompSession session;
+
+    /** Текущий sessionId, выданный сервером */
     private String sessionId;
+
+    /** Подписки, чтобы избежать повторов */
     private final Set<String> subscribedTopics = new HashSet<>();
+
+    /** Файл, в который сохраняется sessionId между запусками */
     private static final Path SESSION_FILE = Path.of("session_id.txt");
 
+    // ============================ LIFECYCLE ============================
+
+    /**
+     * Инициализация WebSocket соединения при старте приложения.
+     * Подключает STOMP-клиент и запускает подписку.
+     */
     @PostConstruct
     public void connect() {
         try {
             sessionId = loadSessionId();
+
             stompClient.connectAsync(props.serverUrl(), new StompSessionHandlerAdapter() {
                 @Override
                 public void afterConnected(StompSession session, StompHeaders connectedHeaders) {
@@ -75,6 +111,11 @@ public class WebSocketAgent {
         }
     }
 
+    // ============================ SUBSCRIBE ============================
+
+    /**
+     * Подписка на получение sessionId от сервера (один раз при старте).
+     */
     private void subscribeToSessionChannel() {
         String sessionChannel = "/queue/session/" + props.ip();
         session.subscribe(sessionChannel, new StompFrameHandler() {
@@ -97,6 +138,9 @@ public class WebSocketAgent {
         });
     }
 
+    /**
+     * Подписка на все топики метрик сервера, если соединение активно.
+     */
     private void subscribeToTopics() {
         if (session == null || !session.isConnected()) {
             System.err.println("❌ Сессия WebSocket неактивна!");
@@ -128,7 +172,7 @@ public class WebSocketAgent {
             }
 
             try {
-                Thread.sleep(50);
+                Thread.sleep(50); // защита от TEXT_PARTIAL_WRITING
                 session.subscribe(topic, new StompFrameHandler() {
                     @Override
                     public Type getPayloadType(StompHeaders headers) {
@@ -147,6 +191,14 @@ public class WebSocketAgent {
         });
     }
 
+    // ============================ SEND ============================
+
+    /**
+     * Отправляет ответ на сервер по /app/response
+     *
+     * @param type    тип метрики (cpu, ram, ports и т.д.)
+     * @param payload объект с данными (DTO)
+     */
     private void sendResponse(String type, Object payload) {
         if (session != null && session.isConnected()) {
             try {
@@ -158,10 +210,18 @@ public class WebSocketAgent {
         }
     }
 
+    /**
+     * Отправляет базовую информацию о сервере при подключении
+     */
     private void sendServerInfo() {
         sendResponse("register", buildServerInfo());
     }
 
+    /**
+     * Сбор ServerInfoDto с основных метрик (используется для регистрации).
+     *
+     * @return DTO с информацией о сервере
+     */
     private ServerInfoDto buildServerInfo() {
         return new ServerInfoDto(
                 sessionId,
@@ -178,6 +238,11 @@ public class WebSocketAgent {
         );
     }
 
+    // ============================ UTILS ============================
+
+    /**
+     * Запускает reconnect в отдельном потоке с экспоненциальной задержкой.
+     */
     private void reconnectAsync() {
         new Thread(() -> {
             int delay = 5000;
@@ -196,6 +261,11 @@ public class WebSocketAgent {
         }).start();
     }
 
+    /**
+     * Сохраняет sessionId в файл.
+     *
+     * @param sessionId session UUID
+     */
     private void saveSessionId(String sessionId) {
         try {
             Files.writeString(SESSION_FILE, sessionId, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
@@ -204,6 +274,11 @@ public class WebSocketAgent {
         }
     }
 
+    /**
+     * Загружает sessionId из файла, если существует.
+     *
+     * @return строка или null
+     */
     private String loadSessionId() {
         try {
             if (Files.exists(SESSION_FILE)) {
@@ -215,6 +290,12 @@ public class WebSocketAgent {
         return null;
     }
 
+    /**
+     * Проверяет, является ли sessionId валидным.
+     *
+     * @param id строка ID
+     * @return true, если id не пустой и не null
+     */
     private boolean isValidSessionId(String id) {
         return id != null && !id.isBlank() && !"null".equalsIgnoreCase(id);
     }

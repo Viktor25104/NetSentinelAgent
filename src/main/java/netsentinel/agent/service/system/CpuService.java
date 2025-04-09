@@ -5,6 +5,13 @@ import oshi.SystemInfo;
 import oshi.hardware.CentralProcessor;
 import org.springframework.stereotype.Service;
 
+/**
+ * Сервис получения информации о процессоре.
+ * Использует библиотеку OSHI для сбора данных о CPU.
+ *
+ * @author Viktor Marymorych
+ * @since 1.0
+ */
 @Service
 public class CpuService {
 
@@ -17,6 +24,11 @@ public class CpuService {
         this.prevTicks = processor.getSystemCpuLoadTicks();
     }
 
+    /**
+     * Возвращает текущую загрузку CPU в процентах.
+     *
+     * @return загрузка (0.0–100.0)
+     */
     public double getCpuLoad() {
         long[] newTicks = processor.getSystemCpuLoadTicks();
         double load = processor.getSystemCpuLoadBetweenTicks(prevTicks) * 100.0;
@@ -24,6 +36,11 @@ public class CpuService {
         return Math.round(load * 10.0) / 10.0;
     }
 
+    /**
+     * Возвращает полную информацию о процессоре.
+     *
+     * @return DTO {@link CpuInfoDto}
+     */
     public CpuInfoDto getCpuInfo() {
         return new CpuInfoDto(
                 processor.getProcessorIdentifier().getName(),

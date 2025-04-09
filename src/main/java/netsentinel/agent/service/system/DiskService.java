@@ -9,6 +9,13 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Сервис для сбора информации о дисках и их загрузке.
+ * Использует OSHI для работы с файловыми системами.
+ *
+ * @author Viktor Marymorych
+ * @since 1.0
+ */
 @Service
 public class DiskService {
 
@@ -19,6 +26,11 @@ public class DiskService {
         this.fileSystem = systemInfo.getOperatingSystem().getFileSystem();
     }
 
+    /**
+     * Возвращает список всех логических дисков с информацией о загрузке.
+     *
+     * @return список {@link DiskInfoDto}
+     */
     public List<DiskInfoDto> getDisksInfo() {
         List<DiskInfoDto> disks = new ArrayList<>();
 
@@ -42,6 +54,11 @@ public class DiskService {
         return disks;
     }
 
+    /**
+     * Возвращает усреднённую загрузку всех дисков.
+     *
+     * @return число от 0 до 100
+     */
     public int getOverallDiskLoad() {
         List<DiskInfoDto> disks = getDisksInfo();
         if (disks.isEmpty()) return 0;

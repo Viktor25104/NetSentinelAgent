@@ -1,0 +1,13 @@
+netsentinel.agent
+netsentinel.agent.client
+netsentinel.agent.config
+netsentinel.agent.controller.api
+netsentinel.agent.controller.view
+netsentinel.agent.controller.ws
+netsentinel.agent.dto.agent
+netsentinel.agent.dto.network
+netsentinel.agent.dto.system
+netsentinel.agent.dto.terminal
+netsentinel.agent.service.network
+netsentinel.agent.service.system
+netsentinel.agent.service.terminal

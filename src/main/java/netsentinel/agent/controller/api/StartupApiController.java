@@ -1,30 +1,38 @@
 package netsentinel.agent.controller.api;
 
-import lombok.RequiredArgsConstructor;
 import netsentinel.agent.service.system.StartupService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.Map;
-
+/**
+ * REST API-контроллер для включения или отключения служб автозапуска.
+ * Предназначен для работы с файлами в папке автозагрузки Windows.
+ *
+ * @author Viktor Marymorych
+ * @since 1.0
+ */
 @RestController
-@RequiredArgsConstructor
 @RequestMapping("/api/startup")
 public class StartupApiController {
 
-    private final StartupService startupService;
+    private final StartupService service;
 
-    @GetMapping("/toggle")
-    public Map<String, Object> toggleStartupService(
-            @RequestParam String serviceName,
+    public StartupApiController(StartupService service) {
+        this.service = service;
+    }
+
+    /**
+     * Включает или отключает службу автозагрузки по имени.
+     *
+     * @param name имя файла/службы
+     * @param enable true для включения, false — для отключения
+     * @return true, если операция выполнена успешно
+     */
+    @PostMapping("/toggle")
+    public ResponseEntity<Boolean> toggle(
+            @RequestParam String name,
             @RequestParam boolean enable
     ) {
-        boolean success = startupService.toggleService(serviceName, enable);
-        Map<String, Object> response = new HashMap<>();
-        response.put("success", success);
-        response.put("message", success
-                ? "Служба " + serviceName + " успешно " + (enable ? "запущена" : "остановлена")
-                : "Не удалось изменить состояние службы " + serviceName);
-        return response;
+        return ResponseEntity.ok(service.toggleService(name, enable));
     }
 }

@@ -7,6 +7,13 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
+/**
+ * Контроллер для отображения основной панели мониторинга.
+ * Передаёт на страницу информацию о CPU, RAM, дисках, сети, процессах и автозагрузке.
+ *
+ * @author Viktor Marymorych
+ * @since 1.0
+ */
 @Controller
 @RequiredArgsConstructor
 public class DashboardViewController {
@@ -18,6 +25,12 @@ public class DashboardViewController {
     private final ProcessService processService;
     private final StartupService startupService;
 
+    /**
+     * Загружает и передаёт данные на страницу панели мониторинга.
+     *
+     * @param model объект модели для Thymeleaf
+     * @return шаблон dashboard/index.html
+     */
     @GetMapping("/dashboard")
     public String getDashboard(Model model) {
         model.addAttribute("cpuInfo", cpuService.getCpuInfo());
@@ -28,5 +41,4 @@ public class DashboardViewController {
         model.addAttribute("startupList", startupService.getStartupList());
         return "dashboard/index";
     }
-
 }

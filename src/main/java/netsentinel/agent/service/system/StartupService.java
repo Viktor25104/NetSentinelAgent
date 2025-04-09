@@ -7,9 +7,21 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
+/**
+ * Сервис для работы со службами автозагрузки (startup items).
+ * Поддерживает только Windows.
+ *
+ * @author Viktor Marymorych
+ * @since 1.0
+ */
 @Service
 public class StartupService {
 
+    /**
+     * Возвращает список элементов автозагрузки.
+     *
+     * @return список {@link StartupItemDto}
+     */
     public List<StartupItemDto> getStartupList() {
         return isWindows() ? getWindowsStartup() : List.of();
     }
@@ -29,6 +41,13 @@ public class StartupService {
         return services;
     }
 
+    /**
+     * Включает или отключает элемент автозагрузки.
+     *
+     * @param serviceName имя файла службы
+     * @param enable true — включить, false — отключить
+     * @return true, если операция успешна
+     */
     public boolean toggleService(String serviceName, boolean enable) {
         if (!isWindows()) return false;
 

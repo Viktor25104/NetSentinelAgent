@@ -1,31 +1,34 @@
 package netsentinel.agent.controller.api;
 
-import lombok.RequiredArgsConstructor;
 import netsentinel.agent.service.system.ProcessService;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.Map;
-
+/**
+ * REST API-контроллер для управления процессами на сервере.
+ * Позволяет завершать запущенные процессы по PID.
+ *
+ * @author Viktor Marymorych
+ * @since 1.0
+ */
 @RestController
-@RequiredArgsConstructor
 @RequestMapping("/api/process")
 public class ProcessApiController {
 
     private final ProcessService processService;
 
-    @GetMapping("/kill")
-    public Map<String, Object> killProcess(@RequestParam int pid) {
-        boolean success = processService.killProcess(pid);
-        Map<String, Object> response = new HashMap<>();
-        response.put("success", success);
-        response.put("message", success
-                ? "Процесс с PID " + pid + " успешно завершен"
-                : "Не удалось завершить процесс с PID " + pid);
-        return response;
+    public ProcessApiController(ProcessService processService) {
+        this.processService = processService;
     }
 
+    /**
+     * Завершает процесс по указанному PID.
+     *
+     * @param pid идентификатор процесса
+     * @return true, если процесс был успешно завершён
+     */
+    @DeleteMapping("/kill/{pid}")
+    public ResponseEntity<Boolean> kill(@PathVariable int pid) {
+        return ResponseEntity.ok(processService.killProcess(pid));
+    }
 }
