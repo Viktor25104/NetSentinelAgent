@@ -10,6 +10,7 @@ import netsentinel.agent.service.network.NetworkPortMonitoringService;
 import netsentinel.agent.service.network.NetworkService;
 import netsentinel.agent.service.system.*;
 import org.springframework.messaging.simp.stomp.*;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 
@@ -203,7 +204,7 @@ public class WebSocketAgent {
         if (session != null && session.isConnected()) {
             try {
                 var response = new AgentResponse(sessionId, type, payload);
-                session.send("/app/response", mapper.writeValueAsString(response));
+                session.send("/app/response", response);
             } catch (Exception e) {
                 System.err.println("❌ Ошибка отправки ответа: " + e.getMessage());
             }
@@ -237,6 +238,42 @@ public class WebSocketAgent {
                 props.companyId()
         );
     }
+
+    /**
+     * Периодическая отправка метрик сервера (CPU, RAM, Disk и др.) на сервер
+     * без запроса с его стороны. Используется для поддержания статуса "online"
+     * и регулярного обновления данных.
+     * <p>
+     * Отправляет объект {@link ServerInfoDto} в обёртке {@link AgentResponse}
+     * на канал "/app/response" каждые 10 секунд, если WebSocket-сессия активна.
+     * <p>
+     * Используется совместно с {@link netsentinel.agent.dto.agent.AgentResponse}
+     * и {@link org.springframework.scheduling.annotation.Scheduled}
+     */
+    @Scheduled(fixedRate = 10_000)
+    public void sendPeriodicInfoToServer() {
+        if (session == null || !session.isConnected()) {
+            System.out.println("❌ WebSocket не подключён, пропуск отправки метрик.");
+            return;
+        }
+
+        if (!isValidSessionId(sessionId)) {
+            System.out.println("❌ sessionId отсутствует — агент не зарегистрирован.");
+            return;
+        }
+
+        try {
+            ServerInfoDto info = buildServerInfo(); // уже готовый метод
+            AgentResponse response = new AgentResponse(sessionId, "info", info);
+
+            session.send("/app/response", response);
+            System.out.println("📤 Агент отправил метрики (info): " + response);
+        } catch (Exception e) {
+            System.err.println("❌ Ошибка отправки info: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
 
     // ============================ UTILS ============================
 

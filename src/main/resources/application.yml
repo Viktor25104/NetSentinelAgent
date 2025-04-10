@@ -15,8 +15,8 @@ agent:
   server-url: ws://localhost:8080/ws
   name: Server-01
   ip: 192.168.1.150
-  type: Linux
-  location: DataCenter-1
+  type: Linux-Kali
+  location: DataCenter-3
   company-id: 1
 
 
