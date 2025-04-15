@@ -20,7 +20,7 @@ public record ProcessInfoDto(
         String name,
         String sessionName,
         Integer sessionId,
-        String memoryUsage,
+        Long memoryUsage,
         Double mem,
         Double cpu
 ) {}

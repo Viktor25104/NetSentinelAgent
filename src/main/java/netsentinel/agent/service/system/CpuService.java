@@ -31,7 +31,7 @@ public class CpuService {
      */
     public double getCpuLoad() {
         long[] newTicks = processor.getSystemCpuLoadTicks();
-        double load = processor.getSystemCpuLoadBetweenTicks(prevTicks) * 100.0;
+        double load = processor.getSystemCpuLoadBetweenTicks(prevTicks) * 1000.0;
         prevTicks = newTicks;
         return Math.round(load * 10.0) / 10.0;
     }

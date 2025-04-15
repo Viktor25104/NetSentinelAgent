@@ -1,13 +1,16 @@
 package netsentinel.agent.controller.api;
 
 import netsentinel.agent.dto.system.CpuInfoDto;
+import netsentinel.agent.dto.system.ProcessInfoDto;
 import netsentinel.agent.dto.system.RamInfoDto;
 import netsentinel.agent.service.system.CpuService;
 import netsentinel.agent.service.system.DiskService;
+import netsentinel.agent.service.system.ProcessService;
 import netsentinel.agent.service.system.RamService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -24,11 +27,14 @@ public class SystemApiController {
     private final CpuService cpuService;
     private final RamService ramService;
     private final DiskService diskService;
+    private final ProcessService processService;
 
-    public SystemApiController(CpuService cpuService, RamService ramService, DiskService diskService) {
+    public SystemApiController(CpuService cpuService, RamService ramService, DiskService diskService,
+                               ProcessService processService) {
         this.cpuService = cpuService;
         this.ramService = ramService;
         this.diskService = diskService;
+        this.processService = processService;
     }
 
     /**
@@ -59,5 +65,17 @@ public class SystemApiController {
     @GetMapping("/disk/usage")
     public ResponseEntity<Integer> getDiskUsage() {
         return ResponseEntity.ok(diskService.getOverallDiskLoad());
+    }
+
+    @GetMapping("/process")
+    public ResponseEntity<List<ProcessInfoDto>> getProcessList() {
+        List<ProcessInfoDto> processes = new ArrayList<>();
+        try {
+            processes = processService.getProcessList();
+            System.out.println("Processes: " + processes.size());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(processes);
+        }
+        return ResponseEntity.ok(processes);
     }
 }

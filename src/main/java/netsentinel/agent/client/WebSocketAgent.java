@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import netsentinel.agent.config.AgentProperties;
 import netsentinel.agent.dto.agent.AgentResponse;
 import netsentinel.agent.dto.agent.ServerInfoDto;
+import netsentinel.agent.dto.system.ProcessInfoDto;
 import netsentinel.agent.service.network.NetworkPortMonitoringService;
 import netsentinel.agent.service.network.NetworkService;
 import netsentinel.agent.service.system.*;
@@ -153,6 +154,7 @@ public class WebSocketAgent {
             return;
         }
 
+        // ==== Подписка на метрики ====
         Map<String, Supplier<?>> subscriptions = Map.of(
                 "info", this::buildServerInfo,
                 "cpu", cpuService::getCpuInfo,
@@ -190,7 +192,35 @@ public class WebSocketAgent {
                 System.err.println("❌ Ошибка подписки на " + topic + ": " + e.getMessage());
             }
         });
+
+        String commandTopic = "/topic/server/" + sessionId + "/command";
+        if (!subscribedTopics.add(commandTopic)) {
+            System.out.println("⚠️ Уже подписан на " + commandTopic);
+            return;
+        }
+
+        try {
+            Thread.sleep(50); // защита от TEXT_PARTIAL_WRITING
+            session.subscribe(commandTopic, new StompFrameHandler() {
+                @Override
+                public Type getPayloadType(StompHeaders headers) {
+                    return String.class;
+                }
+
+                @Override
+                public void handleFrame(StompHeaders headers, Object payload) {
+                    String command = payload.toString().trim();
+                    System.out.println("📩 Получена команда: " + command);
+                    handleCommand(command); // 🔥 универсальный обработчик
+                }
+            });
+            System.out.println("✅ Подписка на " + commandTopic + " выполнена");
+        } catch (Exception e) {
+            System.err.println("❌ Ошибка подписки на " + commandTopic + ": " + e.getMessage());
+        }
+
     }
+
 
     // ============================ SEND ============================
 
@@ -204,10 +234,28 @@ public class WebSocketAgent {
         if (session != null && session.isConnected()) {
             try {
                 var response = new AgentResponse(sessionId, type, payload);
+                System.out.println("📤 Агент отправил ответ (type: " + type + "): " + response);
                 session.send("/app/response", response);
             } catch (Exception e) {
                 System.err.println("❌ Ошибка отправки ответа: " + e.getMessage());
             }
+        }
+    }
+
+    private void sendProcessListChunks() {
+        List<ProcessInfoDto> processes = processService.getProcessList();
+
+        int chunkSize = 100;
+        for (int i = 0; i < processes.size(); i += chunkSize) {
+            List<ProcessInfoDto> chunk = processes.subList(i, Math.min(i + chunkSize, processes.size()));
+            boolean isFinal = i + chunkSize >= processes.size();
+
+            Map<String, Object> payload = Map.of(
+                    "data", chunk,
+                    "final", isFinal
+            );
+
+            sendResponse("process_chunk", payload);
         }
     }
 
@@ -276,6 +324,29 @@ public class WebSocketAgent {
 
 
     // ============================ UTILS ============================
+
+    private void handleCommand(String command) {
+        if (command.startsWith("process_kill_")) {
+            String pidStr = command.substring("process_kill_".length());
+            try {
+                int pid = Integer.parseInt(pidStr);
+                boolean success = processService.killProcess(pid);
+                System.out.println("🔪 Убиваем процесс " + pid + ": " + (success ? "успешно" : "ошибка"));
+            } catch (NumberFormatException e) {
+                System.err.println("❌ Невалидный PID: " + pidStr);
+            }
+
+        } else if (command.startsWith("autorun_toggle_")) {
+            String serviceName = command.substring("autorun_toggle_".length());
+            boolean success = startupService.toggleAutorun(serviceName);
+            System.out.println("🔁 Переключение автозагрузки для " + serviceName + ": " + (success ? "успешно" : "ошибка"));
+
+        } else {
+            System.out.println("⚠️ Неизвестная команда: " + command);
+        }
+    }
+
+
 
     /**
      * Запускает reconnect в отдельном потоке с экспоненциальной задержкой.

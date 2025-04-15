@@ -27,8 +27,9 @@ public class ProcessApiController {
      * @param pid идентификатор процесса
      * @return true, если процесс был успешно завершён
      */
-    @DeleteMapping("/kill/{pid}")
+    @GetMapping("/kill/{pid}")
     public ResponseEntity<Boolean> kill(@PathVariable int pid) {
+        System.out.println("Kill process with PID: " + pid);
         return ResponseEntity.ok(processService.killProcess(pid));
     }
 }
